@@ -1,26 +1,29 @@
 package de.canitzp;
 
-import de.ellpeck.actuallyadditions.mod.blocks.InitBlocks;
-import de.ellpeck.actuallyadditions.mod.blocks.metalists.TheColoredLampColors;
 import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.registry.ForgeRegistries;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import team.chisel.api.carving.CarvingUtils;
 import team.chisel.api.carving.ICarvingGroup;
 import team.chisel.api.carving.ICarvingRegistry;
 import team.chisel.api.carving.ICarvingVariation;
+
+import java.util.Arrays;
 
 @Mod(
     modid = ChiseledAdditions.MODID,
     name = ChiseledAdditions.MODNAME,
     version = ChiseledAdditions.VERSION,
     dependencies = "required-after:actuallyadditions;required-after:chisel",
-    acceptedMinecraftVersions = "[1.12,1.13)"
+    acceptedMinecraftVersions = "[1.11.2,1.13)"
 )
 public class ChiseledAdditions{
     
@@ -28,11 +31,14 @@ public class ChiseledAdditions{
     public static final String MODNAME = "ChiseledAdditions";
     public static final String VERSION = "@Version@";
     
+    public static Logger LOG = LogManager.getLogger(MODNAME);
+    
     public static final String ACTADDID = "actuallyadditions";
     
     private static int[] allMeta = new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
     @Mod.EventHandler
     public void init(FMLInitializationEvent event){
+        LOG.info("Initializing " + MODNAME + " v" + VERSION);
         // Colored Lamps
         addActAddBlockToGroup("actadd:lamp", new ResourceLocation(ACTADDID, "block_colored_lamp"), allMeta);
         
@@ -69,18 +75,29 @@ public class ChiseledAdditions{
         addActAddBlockToGroup("actadd:black_quartz_slabs", new ResourceLocation(ACTADDID, "block_quartz_slab"));
         addActAddBlockToGroup("actadd:black_quartz_slabs", new ResourceLocation(ACTADDID, "block_pillar_quartz_slab"));
         addActAddBlockToGroup("actadd:black_quartz_slabs", new ResourceLocation(ACTADDID, "block_chiseled_quartz_slab"));
+        
+        // Drills
+        NBTTagCompound drillNbt1 = new NBTTagCompound();
+        drillNbt1.setInteger("Energy", 0);
+        addActAddBlockToGroup("actadd:drills_" + 0, new ResourceLocation(ACTADDID, "item_drill"), drillNbt1, allMeta);
+        NBTTagCompound drillNbt2 = new NBTTagCompound();
+        drillNbt2.setInteger("Energy", 250000);
+        addActAddBlockToGroup("actadd:drills_" + 250000, new ResourceLocation(ACTADDID, "item_drill"), drillNbt2, allMeta);
+        
+        LOG.info("Initialisation finished.");
     }
     
     private void addActAddBlockToGroup(String group, ResourceLocation registryName, NBTTagCompound nbt, int... metas){
-        Block block = ForgeRegistries.BLOCKS.getValue(registryName);
-        if(block != null){
+        Block block = Block.REGISTRY.getObject(registryName);
+        Item item = Item.REGISTRY.getObject(registryName);
+        if(block != Blocks.AIR || item != null && !(item instanceof ItemBlock)){
             ICarvingRegistry chisel = CarvingUtils.getChiselRegistry();
             if(chisel != null){
                 if(metas.length == 0){
                     metas = new int[]{0};
                 }
                 for(int meta : metas){
-                    ItemStack stack = new ItemStack(block, 1, meta);
+                    ItemStack stack = block != Blocks.AIR ? new ItemStack(block, 1, meta) : new ItemStack(item, 1, meta);
                     if(nbt != null){
                         stack.setTagCompound(nbt);
                     }
@@ -92,6 +109,7 @@ public class ChiseledAdditions{
                     ICarvingVariation variation = CarvingUtils.variationFor(stack, order);
                     chisel.addVariation(group, variation);
                 }
+                LOG.info("Adding chisel variant for group: '" + group + "' block/item: '" + (block != Blocks.AIR ? block.getRegistryName().toString() : item.getRegistryName().toString()) + "' for metadata: '" + Arrays.toString(metas) + "'");
             }
         }
     }
